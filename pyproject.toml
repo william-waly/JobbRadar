@@ -7,7 +7,13 @@ name = "jobbradar"
 version = "0.1.0"
 description = "End-to-end job market intelligence pipeline"
 requires-python = ">=3.13,<3.14"
-dependencies = []
+dependencies = [
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.1",
+    "alembic>=1.13",
+    "python-dotenv>=1.0",
+    "scrapy>=2.11",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -27,10 +33,3 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
-dependencies = [
-    "sqlalchemy>=2.0",
-    "psycopg[binary]>=3.1",
-    "alembic>=1.13",
-    "python-dotenv>=1.0",
-]
