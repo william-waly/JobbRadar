@@ -69,7 +69,7 @@ class NavFeedSpider(scrapy.Spider):
             detail_url = entry.get("url")
             if not detail_url:
                 continue
-            
+
             full_detail_url = (
                 f"{self.base_url}{detail_url}" if detail_url.startswith("/") else detail_url
             )
@@ -99,7 +99,9 @@ class NavFeedSpider(scrapy.Spider):
 
     def parse_ad_detail(self, response):
         data = json.loads(response.text)
-        ad = data.get("json", {})
+        ad = data.get("ad_content")
+        if not ad:
+            return  # annonsen er inaktiv eller mangler innhold
 
         work_locations = ad.get("workLocations") or [{}]
         location = work_locations[0]
@@ -110,7 +112,7 @@ class NavFeedSpider(scrapy.Spider):
         item["description"] = ad.get("description")
         item["company"] = (ad.get("employer") or {}).get("name")
         item["location"] = location.get("municipal") or location.get("city")
-        item["url"] = ad.get("sourceurl") or ad.get("link")
+        item["url"] = ad.get("link") or ad.get("sourceurl")
         item["published_at"] = ad.get("published")
         item["source_name"] = "NAV Arbeidsplassen"
 
