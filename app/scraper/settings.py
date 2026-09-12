@@ -15,3 +15,7 @@ CONCURRENT_REQUESTS = 2
 
 LOG_LEVEL = "INFO"
 FEED_EXPORT_ENCODING = "utf-8"
+
+ITEM_PIPELINES = {
+    "app.scraper.pipelines.RedisQueuePipeline": 300,
+}

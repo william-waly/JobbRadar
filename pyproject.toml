@@ -13,6 +13,8 @@ dependencies = [
     "alembic>=1.13",
     "python-dotenv>=1.0",
     "scrapy>=2.11",
+    "redis>=5.0",
+    "requests>=2.31",
 ]
 
 [project.optional-dependencies]
