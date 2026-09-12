@@ -13,15 +13,13 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/generate")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma3:4b")
 
 SYSTEM_PROMPT = """Du er en assistent som analyserer stillingsannonser.
-Basert på tittel og beskrivelse, returner KUN et JSON-objekt med nøyaktig disse feltene:
+Basert på tittel og beskrivelse, fyll ut feltene i det oppgitte JSON-skjemaet:
 - "category": overordnet jobbkategori (f.eks. "Backend Development", "Sykepleie", "Salg")
 - "seniority": ett av "Junior", "Medior", "Senior", "Ukjent"
-- "skills": liste med konkrete ferdigheter/teknologier nevnt i teksten (kan være tom liste)
-
-Svar KUN med gyldig JSON, ingen annen tekst."""
+- "skills": liste med konkrete ferdigheter/teknologier nevnt i teksten (kan være tom liste)"""
 
 
 def extract_job_info(title: str, description: str) -> JobExtraction | None:
@@ -35,8 +33,9 @@ def extract_job_info(title: str, description: str) -> JobExtraction | None:
             json={
                 "model": OLLAMA_MODEL,
                 "prompt": prompt,
-                "format": "json",
+                "format": JobExtraction.model_json_schema(),  # tvinger nøyaktig skjema
                 "stream": False,
+                "options": {"temperature": 0},  # mer deterministisk output
             },
             timeout=60,
         )
