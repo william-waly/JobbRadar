@@ -15,6 +15,11 @@ dependencies = [
     "scrapy>=2.11",
     "redis>=5.0",
     "requests>=2.31",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "streamlit>=1.39",
+    "pandas>=2.2",
+    "pydantic>=2.0",
 ]
 
 [project.optional-dependencies]
