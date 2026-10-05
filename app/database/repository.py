@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -65,7 +65,7 @@ def upsert_job(
         description=job_data["description"],
         url=job_data["url"],
         published_at=parse_datetime(job_data["published_at"]),
-        scraped_at=datetime.now(timezone.utc),
+        scraped_at=datetime.now(UTC),
         category=job_data["category"],
         seniority=job_data["seniority"],
     )

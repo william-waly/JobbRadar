@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import scrapy
 
@@ -44,7 +44,7 @@ class NavFeedSpider(scrapy.Spider):
         self.token = lines[-1].strip()
         logger.info("Hentet offentlig token fra NAV.")
 
-        since = datetime.now(timezone.utc) - timedelta(hours=self.hours_back)
+        since = datetime.now(UTC) - timedelta(hours=self.hours_back)
         since_header = since.strftime("%a, %d %b %Y %H:%M:%S GMT")
 
         yield scrapy.Request(

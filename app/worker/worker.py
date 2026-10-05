@@ -1,12 +1,14 @@
 import json
 import logging
-from datetime import datetime, timezone
+
 import redis
+from sqlalchemy.exc import OperationalError
 
 from app.database.base import SessionLocal
 from app.database.repository import get_or_create_company, get_or_create_source, upsert_job
 from app.llm.extractor import extract_job_info
 from app.queue.redis_client import get_redis_client
+from app.worker.retry import retry_with_backoff
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -42,27 +44,45 @@ def process_job(cleaned: dict) -> None:
     seniority = extraction.seniority if extraction else None
     skills = extraction.skills if extraction else []
 
-    session = SessionLocal()
+    def do_upsert():
+        session = SessionLocal()
+        try:
+            source = get_or_create_source(session, SOURCE_NAME, SOURCE_BASE_URL)
+            company_name = cleaned["company"] or "Ukjent arbeidsgiver"
+            company = get_or_create_company(session, company_name)
+
+            job_data = {**cleaned, "category": category, "seniority": seniority}
+            job_id = upsert_job(
+                session, source=source, company=company, job_data=job_data, skill_names=skills
+            )
+            session.commit()
+            return job_id
+        except OperationalError:
+            session.rollback()
+            raise  # transient DB-feil - skal utløse retry
+        except Exception:
+            session.rollback()
+            raise  # andre feil haandteres av kalleren, ikke retry
+        finally:
+            session.close()
+
     try:
-        source = get_or_create_source(session, SOURCE_NAME, SOURCE_BASE_URL)
-        company_name = cleaned["company"] or "Ukjent arbeidsgiver"
-        company = get_or_create_company(session, company_name)
-
-        job_data = {**cleaned, "category": category, "seniority": seniority}
-        job_id = upsert_job(
-            session, source=source, company=company, job_data=job_data, skill_names=skills
+        job_id = retry_with_backoff(
+            do_upsert,
+            max_attempts=3,
+            exceptions=(OperationalError,),
+            label="Databaselagring",
         )
+        if job_id is None:
+            logger.error("Ga opp lagring for jobb %s etter retries.", cleaned.get("external_id"))
+            return
 
-        session.commit()
         logger.info(
             "Upsertet job_id=%s: %s (%s) -> kategori=%s, senioritet=%s, skills=%s",
-            job_id, cleaned["title"], company_name, category, seniority, skills,
+            job_id, cleaned["title"], cleaned["company"], category, seniority, skills,
         )
     except Exception as e:
-        session.rollback()
-        logger.error("Kunne ikke lagre jobb %s: %s", cleaned.get("external_id"), e)
-    finally:
-        session.close()
+        logger.error("Permanent feil ved lagring av jobb %s: %s", cleaned.get("external_id"), e)
 
 def run_worker():
     redis_client = get_redis_client()

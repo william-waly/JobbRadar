@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from pydantic import ValidationError
 
 from app.llm.schemas import JobExtraction
+from app.worker.retry import retry_with_backoff
 
 load_dotenv()
 
@@ -23,26 +24,32 @@ Basert på tittel og beskrivelse, fyll ut feltene i det oppgitte JSON-skjemaet:
 
 
 def extract_job_info(title: str, description: str) -> JobExtraction | None:
-    truncated_description = description[:3000]  # begrens prompt-størrelse
-
+    truncated_description = description[:3000]
     prompt = f"{SYSTEM_PROMPT}\n\nTittel: {title}\nBeskrivelse: {truncated_description}"
 
-    try:
+    def call_ollama():
         response = requests.post(
             OLLAMA_URL,
             json={
                 "model": OLLAMA_MODEL,
                 "prompt": prompt,
-                "format": JobExtraction.model_json_schema(),  # tvinger nøyaktig skjema
+                "format": JobExtraction.model_json_schema(),
                 "stream": False,
-                "options": {"temperature": 0},  # mer deterministisk output
+                "options": {"temperature": 0},
             },
             timeout=60,
         )
         response.raise_for_status()
-    except requests.RequestException as e:
-        logger.error("Kunne ikke nå Ollama: %s", e)
-        return None
+        return response
+
+    response = retry_with_backoff(
+        call_ollama,
+        max_attempts=3,
+        exceptions=(requests.RequestException,),
+        label="Ollama-kall",
+    )
+    if response is None:
+        return None  # ga opp etter retries - logget allerede av retry_with_backoff
 
     raw_output = response.json().get("response", "")
 
@@ -50,5 +57,5 @@ def extract_job_info(title: str, description: str) -> JobExtraction | None:
         parsed = json.loads(raw_output)
         return JobExtraction(**parsed)
     except (json.JSONDecodeError, ValidationError) as e:
-        logger.warning("Ugyldig LLM-output, hopper over: %s", e)
+        logger.warning("Ugyldig LLM-output, hopper over (ingen retry - permanent feil): %s", e)
         return None
