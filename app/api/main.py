@@ -82,4 +82,5 @@ def get_location_statistics(db: Session = Depends(get_db), limit: int = Query(de
         .order_by(func.count(Job.id).desc())
         .limit(limit)
     )
-    return [LocationCountOut(location=row.location, count=row.count) for row in db.execute(stmt).all()]
+    results = db.execute(stmt).all()
+    return [LocationCountOut(location=row.location, count=row.count) for row in results]
