@@ -1,6 +1,6 @@
 # JobbRadar
 
-![CI](https://github.com/<ditt-brukernavn>/JobbRadar/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/william-waly/JobbRadar/actions/workflows/ci.yml/badge.svg)
 
 End-to-end data-pipeline som samler jobbannonser fra NAV sitt offentlige API, strukturerer dem med en lokal LLM, og gjør dataene tilgjengelige gjennom et REST API og et interaktivt dashboard.
 
